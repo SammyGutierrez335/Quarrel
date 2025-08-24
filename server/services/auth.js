@@ -2,7 +2,6 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const User = mongoose.model("user");
-const keys = require("../../config2/keys");
 const validateRegisterInput = require("../validation/register");
 const validateLoginInput = require("../validation/login");
 const randomColor = require("../services/profilecolor");
@@ -40,7 +39,7 @@ const register = async data => {
 
         user.save();
 
-		const token = jwt.sign({ _id: user._id }, keys.secretOrKey);
+		const token = jwt.sign({ _id: user._id }, process.env.secretOrKey);
         return { token, loggedIn: true, ...user._doc, password: null };
 
     } catch (err) {
@@ -65,7 +64,7 @@ const login = async data =>
 			user.password
 		);
 		if (password_matches) {
-			const token = jwt.sign({ _id: user._id }, keys.secretOrKey);
+			const token = jwt.sign({ _id: user._id }, process.env.secretOrKey);
 			return { token, loggedIn: true, ...user._doc, password: null };
 		} else {
 			throw new Error("Invalid Credentials");
@@ -89,7 +88,7 @@ const logout = async data => {
 const verifyUser = async data => {
     try {
         const { token } = data;
-        const decoded = jwt.verify(token, keys.secretOrKey);
+        const decoded = jwt.verify(token, process.env.secretOrKey);
         const { _id } = decoded;
         const loggedIn = await User.findById(_id).then(user => {
             return user ? true : false;
@@ -104,7 +103,7 @@ const verifyUser = async data => {
 const currentUser = async data => {
     try {
         const { token } = data;
-        const decoded = jwt.verify(token, keys.secretOrKey);
+        const decoded = jwt.verify(token, process.env.secretOrKey);
         const { _id } = decoded;
         const user = await User.findById(_id)
         return user;

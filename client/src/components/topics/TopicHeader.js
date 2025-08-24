@@ -1,7 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom"
-import { Mutation, Query } from "react-apollo"
-// import TopicNavBar from "./TopicNavBar.js"
+import { Mutation, Query } from '../../util/ApolloCompat';// import TopicNavBar from "./TopicNavBar.js"
 import Mutations from "../../graphql/mutations"
 import Queries from "../../graphql/queries"
 

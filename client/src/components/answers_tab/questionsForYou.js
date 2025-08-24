@@ -1,48 +1,82 @@
 import React from "react";
-// import { Query } from "react-apollo";
 import { Link } from "react-router-dom";
-// import Queries from "../../graphql/queries";
+import { ApolloConsumer } from "@apollo/client";
+import Queries from "../../graphql/queries";
 import Feed from "../main/feed";
-// const { UNANSWERED_QUESTIONS } = Queries;
+
+const { UNANSWERED_QUESTIONS } = Queries;
 
 class QuestionsForYou extends React.Component {
-    // constructor(props) {
-    //     super(props);
-    // }
+  constructor(props) {
+    super(props);
+    this.state = {
+      questions: [],
+      loading: true,
+      error: null,
+    };
+  }
 
-    render() {
-        return (
+  fetchQuestions(client) {
+    client
+      .query({ query: UNANSWERED_QUESTIONS })
+      .then(({ data }) => {
+        this.setState({ questions: data.unansweredQuestions, loading: false });
+      })
+      .catch((error) => {
+        this.setState({ error, loading: false });
+      });
+  }
+
+  render() {
+    const { questions, loading, error } = this.state;
+
+    return (
+      <ApolloConsumer>
+        {(client) => {
+          if (loading && !error && questions.length === 0) {
+            this.fetchQuestions(client);
+          }
+
+          return (
             <div className="answers-tab-results">
-                <div className="answers-tab-header">
-                    <div className="answer-tab selected left-tab">
-                        <Link to="/answer">Questions for you</Link>
-                    </div>
-                    <div className="answer-tab unselected right-tab">
-                        <Link to="/answered">Questions you answered</Link>
-                    </div>
+              <div className="answers-tab-header">
+                <div className="answer-tab selected left-tab">
+                  <Link to="/answer">Questions for you</Link>
                 </div>
-                {/* <ul className="search-results-list">
-                    <Query query={UNANSWERED_QUESTIONS} >
-                        {({ loading, error, data }) => {
-                            if (loading) return "loading...";
-                            if (error) return `Error! ${error.message}`;
-                            if (data.unansweredQuestions.length === 0) return <li key={0} id="no-results">We don't have any questions for you at the moment. Check later for questions for you to answer.</li>;
-                            return data.unansweredQuestions.map(match => {
-                                return (
-                                    <Link to={`/q/${match._id}`}>
-                                        <li key={match._id}>
-                                            <div className="search-results-match">{match.question}</div>
-                                        </li>
-                                    </Link>
-                                )
-                            })
-                        }}
-                    </Query>
-                </ul> */}
-                <Feed noAnswerYet={true} />
+                <div className="answer-tab unselected right-tab">
+                  <Link to="/answered">Questions you answered</Link>
+                </div>
+              </div>
+
+              {loading && <p>Loading...</p>}
+              {error && <p>Error: {error.message}</p>}
+
+              {!loading && !error && questions.length === 0 && (
+                <p>
+                  We don't have any questions for you at the moment. Check later
+                  for questions to answer.
+                </p>
+              )}
+
+              {!loading && !error && questions.length > 0 && (
+                <ul className="search-results-list">
+                  {questions.map((q) => (
+                    <Link key={q._id} to={`/q/${q._id}`}>
+                      <li>
+                        <div className="search-results-match">{q.question}</div>
+                      </li>
+                    </Link>
+                  ))}
+                </ul>
+              )}
+
+              <Feed noAnswerYet={true} />
             </div>
-        )
-    }
+          );
+        }}
+      </ApolloConsumer>
+    );
+  }
 }
 
 export default QuestionsForYou;

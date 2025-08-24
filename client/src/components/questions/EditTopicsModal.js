@@ -1,5 +1,5 @@
 import React from "react";
-import { Mutation, Query } from "react-apollo";
+import { Mutation, Query } from '../../util/ApolloCompat';
 import Queries from "../../graphql/queries";
 import Mutations from "../../graphql/mutations";
 const { FETCH_TOPICS } = Queries

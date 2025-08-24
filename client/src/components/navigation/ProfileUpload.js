@@ -1,6 +1,6 @@
 import React from 'react';
 import axios from 'axios';
-import { Mutation } from "react-apollo";
+import { Mutation } from '../../util/ApolloCompat';
 import Mutations from "../../graphql/mutations";
 const { UPDATE_PROFILE_PIC } = Mutations;
 

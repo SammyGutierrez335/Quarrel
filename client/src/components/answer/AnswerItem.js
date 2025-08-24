@@ -5,7 +5,7 @@ import CommentIndex from '../comment//CommentIndex';
 import ProfileIcon from "../customization/ProfileIcon";
 import ReactDOM from "react-dom";
 import AnswerEditForm from "./AnswerEditForm";
-import { Mutation } from "react-apollo";
+import { Mutation } from '../../util/ApolloCompat';
 import Mutations from "../../graphql/mutations";
 import Queries from "../../graphql/queries";
 const { DELETE_ANSWER } = Mutations;

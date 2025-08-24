@@ -1,7 +1,7 @@
 import React from "react";
 import Mutations from "../../graphql/mutations";
 import Queries from "../../graphql/queries";
-import { Mutation, Query } from "react-apollo";
+import { Mutation, Query } from '../../util/ApolloCompat';
 import { FaArrowUp } from "react-icons/fa";
 import ProfileIcon from "../customization/ProfileIcon";
 const { UPVOTE_ANSWER, DELETE_UPVOTE } = Mutations;

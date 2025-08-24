@@ -1,6 +1,6 @@
 import React from "react";
 import TopicHeader from "./TopicHeader"
-import { Query } from "react-apollo";
+import { Query } from '../../util/ApolloCompat';
 import Queries from "../../graphql/queries";
 const { FETCH_TOPICS } = Queries;
 

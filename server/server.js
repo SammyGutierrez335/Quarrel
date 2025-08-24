@@ -1,7 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
-const db = require("../config2/keys").mongoURI;
+const mongoURI = process.env.mongoURI;
 const expressGraphQL = require("express-graphql");
 const models = require("./models/index");
 const schema = require("./schema/schema");
@@ -11,12 +11,9 @@ const path = require("path");
 
 const app = express();
 
-if (!db) {
-    throw new Error("This is a config keys.js error.")
-}
-
+if (!mongoURI) throw new Error("This is a config keys.js error.");
 mongoose
-    .connect(db, { useNewUrlParser: true, useUnifiedTopology: true })
+    .connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log("Connected to MongoDB successfully"))
     .catch(err => console.log(err));
 

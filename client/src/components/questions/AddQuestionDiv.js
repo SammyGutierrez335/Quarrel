@@ -1,6 +1,6 @@
 import React from 'react';
 import Queries from "../../graphql/queries";
-import { Query } from "react-apollo";
+import { Query } from '../../util/ApolloCompat';
 import ProfileIcon from "../customization/ProfileIcon";
 const { CURRENT_USER } = Queries;
 

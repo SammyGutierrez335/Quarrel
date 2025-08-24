@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from "react-router-dom"
-import { Query } from "react-apollo"
-import Queries from "../../graphql/queries";
+import { Query } from '../../util/ApolloCompat';import Queries from "../../graphql/queries";
 const { FETCH_TOPICS } = Queries;
 
 class SideBar extends React.Component {

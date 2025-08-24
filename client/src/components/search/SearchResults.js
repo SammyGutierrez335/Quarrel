@@ -1,5 +1,5 @@
 import React from "react";
-import { Query } from "react-apollo";
+import { Query } from '../../util/ApolloCompat';
 import { Link } from "react-router-dom";
 import Queries from "../../graphql/queries";
 const { SIMILAR_QUESTIONS, SEARCH_TOPICS } = Queries;

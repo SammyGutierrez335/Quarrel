@@ -1,8 +1,7 @@
 import React from 'react';
 import { Link, withRouter } from "react-router-dom";
 import Queries from "../../graphql/queries";
-import { Query } from "react-apollo"
-import SearchBar from "./SearchBar";
+import { Query } from '../../util/ApolloCompat';import SearchBar from "./SearchBar";
 import QuestionForm from "../questions/QuestionForm";
 import NavNotifications from "./NavNotifications";
 

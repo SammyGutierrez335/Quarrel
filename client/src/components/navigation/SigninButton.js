@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ApolloConsumer, Query } from "react-apollo";
+import { ApolloConsumer } from '@apollo/client';
+import { Query } from '../../util/ApolloCompat';
 import { withRouter } from "react-router";
 
 import * as SessionUtil from "../../util/session_util";

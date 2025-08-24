@@ -1,7 +1,7 @@
 import React from 'react';
 import { withRouter } from 'react-router-dom';
 import Queries from "../../graphql/queries";
-import { Query } from "react-apollo";
+import { Query } from '../../util/ApolloCompat';
 const { SIMILAR_QUESTIONS } = Queries;
 
 class SearchBar extends React.Component {

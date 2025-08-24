@@ -1,7 +1,7 @@
 import React from "react";
 import Mutations from "../../graphql/mutations";
 import Queries from "../../graphql/queries";
-import { Mutation } from "react-apollo";
+import { Mutation } from '../../util/ApolloCompat';
 import { FaArrowUp } from "react-icons/fa";
 const { DISLIKE_COMMENT, DELETE_DISLIKE } = Mutations;
 const { FETCH_QUESTION } = Queries;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { withRouter } from 'react-router-dom';
-import { ApolloConsumer, Mutation } from "react-apollo";
+import { ApolloConsumer } from '@apollo/client';
+import { Mutation } from '../../util/ApolloCompat';
 import Mutations from "../../graphql/mutations";
 import Queries from "../../graphql/queries";
 import axios from "axios";

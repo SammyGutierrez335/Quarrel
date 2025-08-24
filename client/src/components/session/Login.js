@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mutation } from "react-apollo";
+import { Mutation } from '../../util/ApolloCompat';
 import Mutations from "../../graphql/mutations";
 import * as SessionUtil from "../../util/session_util";
 import { withRouter } from "react-router-dom";

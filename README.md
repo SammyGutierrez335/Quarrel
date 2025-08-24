@@ -50,17 +50,84 @@ in the quesiton show page.
 
 A user can also follow a topic.
 
-The desire for the topics feature was to main the philosophy of DRY coding. Many 
+The desire for the topics feature was to remain DRY. Many 
 components were reused using different graphql queries. For example,
 The TopicsShow page and the Topic Questions page both use the Topic Header.
+```javascript
+//TopicsShow Component
+        <Query
+          query={FETCH_TOPICS}
+        >
+          {({ loading, error, data }) => {
+            if (loading) return "Loading...";
+            if (error) return `Error! ${error.message}`;
+            return (
+              data.topics.map(topic => {
+                return <TopicHeader key={topic._id} topic={topic} name={topic.name} />
+              })
+            )
+          }}
+
+        </Query>
+
+//Topic Questions
+
+        <Query
+          query={FETCH_TOPIC_BY_NAME}
+          variables={{ name: this.props.match.params.name }}
+          >
+          {({ loading, error, data }) => {
+            if (loading) return "Loading...";
+            if (error) return `Error! ${error.message}`;
+            let topic = data.topic_by_name
+            return <div >
+              <TopicHeader key={topic._id} topic={topic} name={topic.name} />
+            <div className="feed-container">
+                {topic.questions.map(question => {
+            
+                  return <QuestionShow key={question._id} fromTopicQuesitons={true} id={question._id} question={question} name={question.name} />
+                }
+                )}
+
+                </div>
+            </div>
+          }}
+        </Query>
+```
 The Topic Questions page queries for topic information using 
-a Fetch All Topics Query while Topic grabs the data by using another query 
+a Fetch All Topics Query while TopicsShow grabs the data by using a seperate query 
 passing in the available topic name from the URL.
+
+
+
 
 The Topic Question also reused the Question Show component. Initially this presented
 some challenges with styling and proper links but was accomplished with a 
 prop called "fromTopicQuestion" with a value of True. Inside of the question show
 we could conditionally check to see if this was a feed item "Question Show"
 component or being reused by the Topic Question Component.
+```Javascript
+
+    renderAnswers(answers) {
+        if (this.state.showMoreAnswers || !(this.props.fromTopicQuesitons)) {
+            return answers
+        } else {
+            return answers[0]
+        }
+    }
+
+    renderShowAnswersButton(answersLength) {
+        if (answersLength && this.props.fromTopicQuesitons) {
+            if(this.state.showMoreAnswers) {
+                return <button className="answers-toggle"onClick={this.toggleShowMoreAnswers}>Show Less Answers</button>
+            } else {
+                return <button className="answers-toggle" onClick={this.toggleShowMoreAnswers}>Show More Answers</button>
+            }
+        } else {
+            return null
+        }
+    }
+```
+
 ### Comments
 <img width="1440" alt="quarrel_comments" src="https://user-images.githubusercontent.com/19655779/78737725-1443b380-7905-11ea-9646-9316e5c0be01.png">

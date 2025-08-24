@@ -20,39 +20,27 @@ class RightSideBar extends React.Component {
     render() {
         
         const kevin = {
-            name: "Kevin L.",
+            name: "Kevin Lu",
             git: "http://github.com/kluaa",
             linkedIn: "https://www.linkedin.com/in/kevin-lu-96b294191/",
-            portfolio: "http://kevinlu.netlify.com",
-            angel: "https://angel.co/u/kevin-lu-45"
         }
 
         const javier = {
-            name: "Javier O.",
+            name: "Javier Ortiz",
             git: "https://github.com/javiermortiz",
             linkedIn: "https://www.linkedin.com/in/javiermortiz/",
-            portfolio: "https://www.javiermortiz.com/",
-            angel: "https://angel.co/u/javiermortiz"
         }
 
         const sammy = {
-            name: "Sammy G.",
+            name: "Sammy Gutierrez",
             git: "https://github.com/SammyGutierrez335",
             linkedIn: "https://www.linkedin.com/in/sammy-gutierrez/",
-            portfolio: "https://www.samgutierrez.com/",
-            angel: "https://angel.co/u/sammy-gutierrez"
+            portfolio: "https://sammygutierrez335.github.io/Portfolio/",
         }
 
+        const members = [ sammy, kevin, javier ];
 
-        const elizabeth = {
-            name: "Elizabeth D.",
-            git: "https://github.com/eqdang",
-            linkedIn: "https://www.linkedin.com/mwlite/in/elizabethqdang",
-        }
-
-        const members = [ kevin, javier, sammy, elizabeth ];
-
-        const links = this.shuffle(members).map(member => {
+        const links = members.map(member => {
        
             return (
                 <ul className="rsb-member">
@@ -65,10 +53,6 @@ class RightSideBar extends React.Component {
                         <i className="fab fa-linkedin"></i>
                         <a href={member.linkedIn}>LinkedIn</a>
                    </li> }
-                    { member.angel && <li>
-                        <i className="fab fa-angellist"></i>
-                        <a href={member.angel}>AngelList</a>
-                    </li> }
                    { member.portfolio && <li>
                         <i className="fas fa-folder"></i>
                         <a href={member.portfolio}>Portfolio</a>

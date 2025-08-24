@@ -2,10 +2,10 @@
 Quarrel is a question-and-answer web application inspired by the website Quora. It contains full authentication features where you can sign up, log in with your credentials, ask questions, search questions by topics, answer other user's questions, upvote answers and comment on them.
 
 ## Demo
-Live demo: http://quarrel-pro.herokuapp.com/
+Live demo: https://quarrel.onrender.com
 
 ## Technologies used
-Quarrel's back-end is built on [MongoDB](https://www.mongodb.com/) and [Express](https://expressjs.com/). The front-end is built with [React](https://reactjs.org/), [GraphQL](https://graphql.org/) to handle API requests, [Node.js](https://nodejs.org/) served as the runtime environment, and finally the app is containerized using [Docker](https://www.docker.com/).
+Quarrel's back-end is built on [MongoDB](https://www.mongodb.com/) and [Express](https://expressjs.com/). The front-end is built with [React](https://reactjs.org/), [GraphQL](https://graphql.org/) to handle API requests, [Node.js](https://nodejs.org/) served as the runtime environment.
 
 ## Site
 ### Landing Page
@@ -55,44 +55,62 @@ components were reused using different graphql queries. For example,
 The TopicsShow page and the Topic Questions page both use the Topic Header.
 ```javascript
 //TopicsShow Component
-        <Query
-          query={FETCH_TOPICS}
-        >
-          {({ loading, error, data }) => {
-            if (loading) return "Loading...";
-            if (error) return `Error! ${error.message}`;
-            return (
-              data.topics.map(topic => {
-                return <TopicHeader key={topic._id} topic={topic} name={topic.name} />
-              })
-            )
-          }}
+import { useQuery } from "@apollo/client";
+import { FETCH_TOPICS } from "../../graphql/queries";
+import TopicHeader from "./TopicHeader";
 
-        </Query>
+function TopicsShow() {
+  const { loading, error, data } = useQuery(FETCH_TOPICS);
+
+  if (loading) return "Loading...";
+  if (error) return `Error! ${error.message}`;
+
+  return (
+    <>
+      {data.topics.map((topic) => (
+        <TopicHeader key={topic._id} topic={topic} name={topic.name} />
+      ))}
+    </>
+  );
+}
+
+export default TopicsShow;
 
 //Topic Questions
+import { useQuery } from "@apollo/client";
+import { FETCH_TOPIC_BY_NAME } from "../../graphql/queries";
+import TopicHeader from "./TopicHeader";
+import QuestionShow from "../questions/QuestionShow";
 
-        <Query
-          query={FETCH_TOPIC_BY_NAME}
-          variables={{ name: this.props.match.params.name }}
-          >
-          {({ loading, error, data }) => {
-            if (loading) return "Loading...";
-            if (error) return `Error! ${error.message}`;
-            let topic = data.topic_by_name
-            return <div >
-              <TopicHeader key={topic._id} topic={topic} name={topic.name} />
-            <div className="feed-container">
-                {topic.questions.map(question => {
-            
-                  return <QuestionShow key={question._id} fromTopicQuesitons={true} id={question._id} question={question} name={question.name} />
-                }
-                )}
+function TopicQuestions({ match }) {
+  const { loading, error, data } = useQuery(FETCH_TOPIC_BY_NAME, {
+    variables: { name: match.params.name },
+  });
 
-                </div>
-            </div>
-          }}
-        </Query>
+  if (loading) return "Loading...";
+  if (error) return `Error! ${error.message}`;
+
+  const topic = data.topic_by_name;
+
+  return (
+    <div>
+      <TopicHeader key={topic._id} topic={topic} name={topic.name} />
+      <div className="feed-container">
+        {topic.questions.map((question) => (
+          <QuestionShow
+            key={question._id}
+            fromTopicQuestions={true}
+            id={question._id}
+            question={question}
+            name={question.name}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default TopicQuestions;
 ```
 The Topic Questions page queries for topic information using 
 a Fetch All Topics Query while TopicsShow grabs the data by using a seperate query 
@@ -109,7 +127,7 @@ component or being reused by the Topic Question Component.
 ```Javascript
 
     renderAnswers(answers) {
-        if (this.state.showMoreAnswers || !(this.props.fromTopicQuesitons)) {
+        if (this.state.showMoreAnswers || !(this.props.fromTopicQuestions)) {
             return answers
         } else {
             return answers[0]
@@ -117,7 +135,7 @@ component or being reused by the Topic Question Component.
     }
 
     renderShowAnswersButton(answersLength) {
-        if (answersLength && this.props.fromTopicQuesitons) {
+        if (answersLength && this.props.fromTopicQuestions) {
             if(this.state.showMoreAnswers) {
                 return <button className="answers-toggle"onClick={this.toggleShowMoreAnswers}>Show Less Answers</button>
             } else {

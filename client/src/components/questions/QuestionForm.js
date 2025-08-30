@@ -1,376 +1,347 @@
-import React from "react";
-import { Mutation, Query } from '../../util/ApolloCompat';
+import React, { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation } from "@apollo/client";
 import Queries from "../../graphql/queries";
 import Mutations from "../../graphql/mutations";
 import { FaLink } from "react-icons/fa";
 import { Link, withRouter } from "react-router-dom";
 import ProfileIcon from "../customization/ProfileIcon";
 import AddQuestionDiv from "./AddQuestionDiv";
-const Validator = require("validator");
+import Validator from "validator";
+
 const { FETCH_QUESTIONS, CURRENT_USER, SIMILAR_QUESTIONS, FETCH_TOPICS } = Queries;
 const { NEW_QUESTION, ADD_TOPIC_TO_QUESTION } = Mutations;
 
+function QuestionForm({ history, closeSearchModal = () => {}, button, div }) {
+  const [question, setQuestion] = useState("");
+  const [message, setMessage] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [success, setSuccess] = useState("");
+  const [link, setLink] = useState("");
+  const [successfulQuestion, setSuccessfulQuestion] = useState("");
+  const [successfulQId, setSuccessfulQId] = useState("");
+  const [redirectId, setRedirectId] = useState("");
+  const [showTopicModal, setShowTopicModal] = useState(false);
+  const [topics, setTopics] = useState([]);
+  const [checked, setChecked] = useState({});
+  const [dataMatches, setDataMatches] = useState([]);
 
-class QuestionForm extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            question: "",
-            message: "",
-            showModal: false,
-            success: "",
-            link: "",
-            successfulQuestion: "",
-            successfulQId: "",
-            redirectId: "",
-            showTopicModal: false,
-            topics: [],
-            checked: {
-            },
-            dataMatches: []
-        };
-        this.handleModal = this.handleModal.bind(this);
-        this.closeMessage = this.closeMessage.bind(this);
-        this.redirect = this.redirect.bind(this);
-        this.setDefaultCheck = this.setDefaultCheck.bind(this);
-        this.handleTopicSubmit = this.handleTopicSubmit.bind(this);
-        this.updateTopic = this.updateTopic.bind(this);
-        this.handleTopicModal = this.handleTopicModal.bind(this);
+  // Current user (for avatar/name in the Add Question modal)
+  const { data: currentUserData, loading: currentUserLoading, error: currentUserError } = useQuery(
+    CURRENT_USER,
+    {
+      variables: { token: localStorage.getItem("auth-token") },
+      skip: !showModal,
     }
+  );
 
+  // Similar questions for the live matches list
+  const { data: similarData, loading: similarLoading } = useQuery(SIMILAR_QUESTIONS, {
+    variables: { question },
+    skip: question.length <= 1,
+  });
 
-    componentDidUpdate(prevProps, prevState) {
-        if (prevState.redirectId !== this.state.redirectId) {
-            this.props.history.push(`/q/${this.state.redirectId}`);
-        }
+  useEffect(() => {
+    if (similarData?.similarQuestions) {
+      setDataMatches(similarData.similarQuestions);
     }
+  }, [similarData]);
 
-    redirect(id) {
-        return e => {
-            this.setState({
-                showModal: false,
-                redirectId: id
-            });
-        }
-    }
+  // Topic list when the topics modal is open
+  const {
+    data: topicsData,
+    loading: topicsLoading,
+    error: topicsError,
+  } = useQuery(FETCH_TOPICS, { skip: !showTopicModal });
 
-    handleModal(e) {
-        e.preventDefault();
-        this.props.closeSearchModal(e);
-        this.setState({
-            showModal: !this.state.showModal,
-            message: "",
-            success: "",
-            question: "",
-            link: "",
-            successfulQuestion: "",
-            successfulQId: "",
-            dataMatches: []
+  // Create question
+  const [createQuestion] = useMutation(NEW_QUESTION, {
+    update(cache, { data }) {
+      try {
+        const existing = cache.readQuery({ query: FETCH_QUESTIONS });
+        if (!existing) return;
+        const newQ = data.newQuestion;
+        cache.writeQuery({
+          query: FETCH_QUESTIONS,
+          data: { questions: [newQ, ...existing.questions] },
         });
+      } catch (err) {
+        // Cache might not have FETCH_QUESTIONS yet; ignore
+      }
+    },
+    onError(err) {
+      setMessage(err.message || "Could not add question.");
+      setTimeout(() => setMessage(""), 5001);
+    },
+    onCompleted(data) {
+      const { question: qText, _id } = data.newQuestion;
+      setMessage("You asked: ");
+      setSuccess("success");
+      setShowModal(false);
+      setQuestion("");
+      setLink("");
+      setSuccessfulQuestion(qText);
+      setSuccessfulQId(_id);
+      setShowTopicModal(true);
+      setDataMatches([]);
+      setTimeout(() => setMessage(""), 5001);
+    },
+  });
+
+  // Add topic to question
+  const [addTopicToQuestion] = useMutation(ADD_TOPIC_TO_QUESTION);
+
+  useEffect(() => {
+    if (redirectId) history.push(`/q/${redirectId}`);
+  }, [redirectId, history]);
+
+  const handleModal = (e) => {
+    e.preventDefault();
+    closeSearchModal(e);
+    setShowModal((prev) => !prev);
+    setMessage("");
+    setSuccess("");
+    setQuestion("");
+    setLink("");
+    setSuccessfulQuestion("");
+    setSuccessfulQId("");
+    setDataMatches([]);
+  };
+
+  const closeMessage = () => setMessage("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    let q = question;
+
+    if (q.trim().length < 1 || q.split(" ").length < 3) {
+      setMessage(
+        "This question needs more detail. Add more information to ask a clear question, written as a complete sentence."
+      );
+      setTimeout(closeMessage, 5001);
+      return;
     }
 
-    closeMessage(e) {
-        this.setState({ message: "" })
+    if (link.length === 0 || Validator.isURL(link)) {
+      q = q.trim();
+      if (q[q.length - 1] !== "?") q += "?";
+      createQuestion({ variables: { question: q, link } });
+    } else {
+      setMessage("The source should be a valid link.");
+      setTimeout(closeMessage, 5001);
     }
+  };
 
-    update(field) {
-        return e => this.setState({ [field]: e.currentTarget.value })
+  const handleTopicSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      for (let topicId of topics) {
+        // Await each to keep order/avoid race messages
+        // (same behavior as sequential .forEach with mutations)
+        // eslint-disable-next-line no-await-in-loop
+        await addTopicToQuestion({ variables: { topicId, questionId: successfulQId } });
+      }
+      setShowTopicModal(false);
+      setTopics([]);
+      setChecked({});
+      setMessage("You successfully set topics for ");
+      setTimeout(closeMessage, 5001);
+    } catch (err) {
+      setMessage(err.message || "Failed to set topics.");
+      setTimeout(closeMessage, 5001);
     }
+  };
 
-    updateCache(cache, { data }) {
-        let questions;
-        try {
-            questions = cache.readQuery({ query: FETCH_QUESTIONS });
-        } catch (err) {
-            return;
-        }
-        if (questions) {
-            let questionArray = questions.questions;
-            let newQuestion = data.newQuestion;
-            questionArray.unshift(newQuestion);
-            cache.writeQuery({
-                query: FETCH_QUESTIONS,
-                data: { questions: questionArray }
-            });
-        }
+  const handleTopicModal = (e) => {
+    e.preventDefault();
+    setShowTopicModal((prev) => !prev);
+    setTopics([]);
+    setChecked({});
+  };
+
+  const updateTopic = (e) => {
+    const topicId = e.currentTarget.value;
+    if (topics.includes(topicId)) {
+      setTopics(topics.filter((id) => id !== topicId));
+      setChecked({ ...checked, [topicId]: false });
+    } else {
+      setTopics([...topics, topicId]);
+      setChecked({ ...checked, [topicId]: true });
     }
+  };
 
-    handleSubmit(e, newQuestion) {
-        e.preventDefault();
-        let question = this.state.question;
-        const link = this.state.link;
-        if (question.trim().length < 1 || question.split(" ").length < 3) {
-            this.setState({
-                message: "This question needs more detail. " +
-                    "Add more information to ask a clear question, " +
-                    "written as a complete sentence."
-            });
-            setTimeout(this.closeMessage, 5001)
-        } else if (link.length === 0 || Validator.isURL(link)) {
-            question = question.trim();
-            if (question[question.length - 1] !== "?") question = question + '?';
-            newQuestion({
-                variables: {
-                    question: question,
-                    link: link
-                }
-            });
-            setTimeout(this.closeMessage, 5001)
-        } else {
-            this.setState({ message: "The source should be a valid link." })
-            setTimeout(this.closeMessage, 5001)
-        }
-    }
+  const capitalize = (word = "") => (word ? word[0].toUpperCase() + word.slice(1) : "");
 
-    handleTopicSubmit(e, addTopicToQuestion) {
-        e.preventDefault()
-        let topics = this.state.topics;
-        topics.forEach(topicId => {
-            addTopicToQuestion({ variables: { topicId: topicId, questionId: this.state.successfulQId } })
-        });
-        setTimeout(this.closeMessage, 5001);
-    }
+  const redirect = useCallback(
+    (id) => () => {
+      setShowModal(false);
+      setRedirectId(id);
+    },
+    []
+  );
 
-    handleTopicModal(e) {
-        e.preventDefault();
-        this.setState({ showTopicModal: !this.state.showTopicModal, topics: [], checked: {} });
-    }
+  // Matches list (keeps showing previous matches while loading—same UX as before)
+  const matchesList =
+    question.length > 1 ? (
+      <ul className="matches-list">
+        {(similarLoading ? dataMatches : dataMatches)?.map((match) => (
+          <li className="matches-item" onClick={redirect(match._id)} key={match._id}>
+            <div>{match.question}</div>
+            <div className="question-form-answers-number">
+              {`${match.answers.length} ${match.answers.length === 1 ? "answer" : "answers"}`}
+            </div>
+          </li>
+        ))}
+      </ul>
+    ) : null;
 
-    updateTopic(e) {
-        let topicId = e.currentTarget.value;
-        let dup = [...this.state.topics]
-        dup.push(topicId)
+  return (
+    <div>
+      {message.length > 0 && (
+        <div className={`modal-message hide-me ${success}`}>
+          <div className="hidden">x</div>
+          <p>
+            {message}
+            {successfulQId && (
+              <Link to={`/q/${successfulQId}`}>{successfulQuestion}</Link>
+            )}
+          </p>
+          <div className="close-message" onClick={closeMessage}>
+            x
+          </div>
+        </div>
+      )}
 
-        let trueState = Object.assign({}, this.state.checked, { [topicId]: true })
-        let falseState = Object.assign({}, this.state.checked, { [topicId]: false })
-        if (this.state.topics.includes(topicId)) {
-            this.setState({ topics: this.state.topics.filter(topic => topic !== topicId), checked: falseState })
-        } else {
-            this.setState({ topics: dup, checked: trueState })
-        }
-    }
+      {/* optional triggers from props, same as before */}
+      {button && (
+        <button className="nav-ask-btn" onClick={handleModal}>
+          Add Question
+        </button>
+      )}
+      {div && <AddQuestionDiv handleModal={handleModal} />}
 
-    setDefaultCheck(topic) {
-        return this.state.topics.includes(topic._id)
-    }
+      {/* Add Question modal */}
+      {showModal && (
+        <div className="modal-background" onClick={handleModal}>
+          <div className="modal-child" onClick={(e) => e.stopPropagation()}>
+            <div className="add-question-modal">
+              <div className="modal-header">
+                <div className="add-question-modal-header">
+                  <div className="tab selected">Add Question</div>
+                </div>
+                <div className="add-question-modal-x">
+                  <span onClick={handleModal}>X</span>
+                </div>
+              </div>
 
-    capitalize(word) {
-        return word[0].toUpperCase() + word.slice(1);
-    }
+              <form onSubmit={handleSubmit}>
+                <div className="add-question-modal-content">
+                  {/* current user header */}
+                  {!currentUserLoading && !currentUserError && currentUserData?.currentUser && (
+                    <div className="add-question-modal-user">
+                      <ProfileIcon
+                        size={30}
+                        profileUrl={currentUserData.currentUser.profileUrl}
+                        fsize={15}
+                        fname={currentUserData.currentUser.fname}
+                      />
+                      <div className="question-modal-user-name">
+                        {`${capitalize(currentUserData.currentUser.fname)} ${capitalize(
+                          currentUserData.currentUser.lname
+                        )} asked`}
+                      </div>
+                    </div>
+                  )}
 
-    render() {
-        const topicModal = (
-            <div className="modal-background" onClick={this.handleTopicModal}>
-                <div className="modal-child" onClick={e => e.stopPropagation()}>
-                    <div className="add-question-modal">
-                        <Mutation
-                            mutation={ADD_TOPIC_TO_QUESTION}
-                            onError={err => this.setState({ message: err.message })}
-                            onCompleted={data => {
-                                this.setState({
-                                    showTopicModal: false,
-                                    message: "You successfully set topics for ",
-                                    topics: [],
-                                    checked: {}
-                                });
-                            }}
+                  <div className="add-question-modal-question">
+                    <textarea
+                      onChange={(e) => setQuestion(e.target.value)}
+                      value={question}
+                      placeholder='Start your question with "What", "How", "Why", etc.'
+                    />
+                    {matchesList}
+                  </div>
+
+                  <div className="add-question-modal-link">
+                    <span>
+                      <FaLink />
+                    </span>
+                    <input
+                      onChange={(e) => setLink(e.target.value)}
+                      value={link}
+                      placeholder="Optional: include a link that gives context"
+                    />
+                  </div>
+                </div>
+
+                <div className="add-question-modal-footer">
+                  <button type="button" className="cancel-button" onClick={handleModal}>
+                    Cancel
+                  </button>
+                  <button className="add-button" type="submit">
+                    Add Question
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Topics modal */}
+      {showTopicModal && (
+        <div className="modal-background" onClick={handleTopicModal}>
+          <div className="modal-child" onClick={(e) => e.stopPropagation()}>
+            <div className="add-question-modal">
+              <div className="topics-modal">
+                <div className="topics-modal-header">{successfulQuestion}</div>
+                <div className="topics-modal-instructions">
+                  Add topics that best describe your question
+                </div>
+
+                <form onSubmit={handleTopicSubmit}>
+                  <div className="topics-modal-body">
+                    {topicsLoading && "loading..."}
+                    {topicsError && `Error! ${topicsError.message}`}
+                    {!topicsLoading &&
+                      !topicsError &&
+                      topicsData?.topics?.map((topic) => (
+                        <div
+                          className="topics-modal-topic-container"
+                          key={topic._id}
                         >
-                            {(addTopicToQuestion) => (
-                                <div className="topics-modal">
-                                    <div className="topics-modal-header">
-                                        {this.state.successfulQuestion}
-                                    </div>
-                                    <div className="topics-modal-instructions">
-                                        Add topics that best describe your question
-                                    </div>
-                                    <form onSubmit={e => this.handleTopicSubmit(e, addTopicToQuestion)}>
-                                        <div className="topics-modal-body">
-                                            <Query query={FETCH_TOPICS} >
-                                                {({ loading, error, data }) => {
-                                                    if (loading) return "loading...";
-                                                    if (error) return `Error! ${error.message}`;
-                                                    return data.topics.map(topic => {
-                                                        return (
-                                                            <div className="topics-modal-topic-container">
-                                                                <input type="checkbox"
-                                                                    name={topic.name}
-                                                                    value={topic._id}
-                                                                    onChange={this.updateTopic}
-                                                                    checked={this.state.checked[topic._id]}
-                                                                />
-                                                                <img className="topic-modal-icon" src={topic.imageUrl} alt="" />
-                                                                <label for={topic.name}>{topic.name}</label>
-                                                            </div>
-                                                        )
-                                                    })
-                                                }}
-                                            </Query>
-                                        </div>
-                                        <div className="add-question-modal-footer">
-                                            <button className="cancel-button" onClick={this.handleTopicModal}>Cancel</button>
-                                            <button className="add-button" type="submit">Add Topics</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            )}
-                        </Mutation>
-                    </div>
-                </div>
-            </div>
-        )
-        let matchesList = "";
-        let questionLength = this.state.question.length;
-        if (questionLength > 1) {
-            matchesList = (
-                <Query query={SIMILAR_QUESTIONS} variables={{ question: this.state.question }}>
-                    {({ loading, error, data }) => {
-                        if (loading) {
-                            return this.state.dataMatches.map(match => {
-                                return (
-                                    <li className="matches-item" onClick={this.redirect(match._id)}>
-                                        <div>{`${match.question}`}</div>
-                                        <div className="question-form-answers-number">
-                                            {`${match.answers.length} ${match.answers.length === 1 ? "answer" : "answers"}`}
-                                        </div>
-                                    </li>
-                                )
-                            })
-                        }
-                        if (error) return `Error! ${error.message}`;
-                        if (data.similarQuestions.length) {
-                            this.state.dataMatches = data.similarQuestions;
-                        }
-                        return this.state.dataMatches.map(match => {
-                            return (
-                                <li className="matches-item" onClick={this.redirect(match._id)} key={match._id}>
-                                    <div>{`${match.question}`}</div>
-                                    <div className="question-form-answers-number">
-                                        {`${match.answers.length} ${match.answers.length === 1 ? "answer" : "answers"}`}
-                                    </div>
-                                </li>
-                            )
-                        })
-                    }}
-                </Query>
-            )
-        }
-        const button = (
-            <div className="modal-background" onClick={this.handleModal}>
-                <div className="modal-child" onClick={e => e.stopPropagation()}>
-                    <Mutation
-                        mutation={NEW_QUESTION}
-                        onError={err => this.setState({ message: err.message })}
-                        update={(cache, data) => this.updateCache(cache, data)}
-                        onCompleted={data => {
+                          <input
+                            type="checkbox"
+                            name={topic.name}
+                            value={topic._id}
+                            onChange={updateTopic}
+                            checked={!!checked[topic._id]}
+                          />
+                          <img className="topic-modal-icon" src={topic.imageUrl} alt="" />
+                          <label htmlFor={topic.name}>{topic.name}</label>
+                        </div>
+                      ))}
+                  </div>
 
-                            const { question } = data.newQuestion;
-                            this.setState({
-                                message: `You asked: `,
-                                success: 'success',
-                                showModal: false,
-                                question: "",
-                                link: "",
-                                successfulQuestion: `${question}`,
-                                successfulQId: data.newQuestion._id,
-                                showTopicModal: true,
-                                dataMatches: []
-                            });
-                        }}
+                  <div className="add-question-modal-footer">
+                    <button
+                      type="button"
+                      className="cancel-button"
+                      onClick={handleTopicModal}
                     >
-                        {(newQuestion, { data }) => (
-                            <div className="add-question-modal">
-                                <div className="modal-header">
-                                    <div className="add-question-modal-header">
-                                        <div className="tab selected">Add Question</div>
-                                        {/* <div className="tab">Share Link</div> */}
-                                    </div>
-                                    <div className="add-question-modal-x">
-                                        <span onClick={this.handleModal}>X</span>
-                                    </div>
-                                </div>
-                                <form onSubmit={e => this.handleSubmit(e, newQuestion)}>
-                                    <div className="add-question-modal-content">
-                                        <Query
-                                            query={CURRENT_USER} variables={{ token: localStorage.getItem("auth-token") }}>
-                                            {({ loading, error, data }) => {
-                                                if (loading) return "Loading...";
-                                                if (error) return `Error! ${error.message}`
-                                                return (
-                                                    <div className="add-question-modal-user">
-
-                                                        <ProfileIcon
-                                                            size={30}
-                                                            profileUrl={data.currentUser.profileUrl}
-                                                            fsize={15}
-                                                            fname={data.currentUser.fname}
-                                                        />
-                                                        <div className="question-modal-user-name">
-                                                            {`${this.capitalize(data.currentUser.fname)} ${this.capitalize(data.currentUser.lname)} asked`}
-                                                        </div>
-                                                    </div>
-                                                )
-                                            }}
-                                        </Query>
-                                        <div className="add-question-modal-question">
-                                            <textarea
-                                                onChange={this.update("question")}
-                                                value={this.state.question}
-                                                placeholder='Start your question with "What", "How", "Why", etc.'
-                                            />
-                                            <ul className="matches-list">
-                                                {matchesList}
-                                            </ul>
-                                        </div>
-                                        <div className="add-question-modal-link">
-                                            <span><FaLink /></span>
-                                            <input
-                                                onChange={this.update("link")}
-                                                value={this.state.link}
-                                                placeholder="Optional: include a link that gives context"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="add-question-modal-footer">
-                                        <button className="cancel-button" onClick={this.handleModal}>Cancel</button>
-                                        <button className="add-button" type="submit">Add Question</button>
-                                    </div>
-                                </form>
-                            </div>
-                        )}
-                    </Mutation>
-                </div>
+                      Cancel
+                    </button>
+                    <button className="add-button" type="submit">
+                      Add Topics
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
-        )
-        return (
-            <div>
-                {
-                    this.state.message.length > 0 &&
-                    <div className={`modal-message hide-me ${this.state.success}`}>
-                        <div className="hidden">x</div>
-                        <p>{this.state.message}<Link to={`/q/${this.state.successfulQId}`}>{this.state.successfulQuestion}</Link></p>
-                        <div className="close-message" onClick={this.closeMessage}>x</div>
-                    </div>
-                }
-                {/* <div className="add-question-item" onClick={this.handleModal}>
-                    <p className="add-question-item-user">Username</p>
-                    <p className="add-question-item-prompt">What is your question or link?</p>
-                </div> */}
-                {
-                    // if the props specify a button, the button gets rendered
-                    this.props.button &&
-                    <button className="nav-ask-btn" onClick={this.handleModal}>Add Question</button>
-                }
-                {
-                    // otherwise if a div is specified, the div gets rendered
-                    this.props.div &&
-                    <AddQuestionDiv handleModal={this.handleModal} />
-                }
-                {this.state.showModal && button}
-                {
-                    this.state.showTopicModal && topicModal
-                }
-            </div>
-        )
-    }
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
+
 export default withRouter(QuestionForm);

@@ -3,7 +3,6 @@ import { Link, withRouter } from "react-router-dom";
 import Queries from "../../graphql/queries";
 import { Query } from '../../util/ApolloCompat';import SearchBar from "./SearchBar";
 import QuestionForm from "../questions/QuestionForm";
-import NavNotifications from "./NavNotifications";
 
 import ProfileIcon from "../customization/ProfileIcon";
 import OptionsMenu from "./OptionsMenu";
@@ -125,7 +124,6 @@ class NavBar extends React.Component {
                                 <span>Topics</span>
                             </li>
                         </Link>
-                        <NavNotifications />
                     </ul>
                     <SearchBar
                         openModal={this.openModal}

@@ -1,161 +1,89 @@
-import React from 'react';
-import { Mutation } from '../../util/ApolloCompat';
+import React, { useState } from "react";
+import { useMutation, useApolloClient } from "@apollo/client";
+import { useHistory } from "react-router-dom";
 import Mutations from "../../graphql/mutations";
 import * as SessionUtil from "../../util/session_util";
-import { withRouter } from "react-router-dom";
 
 const { LOGIN_USER } = Mutations;
 
-class Login extends React.Component {
-	constructor(props) {
-		super(props);
-		this.state = {
-			email: "",
-			password: "",
-			errors: [],
-			showErrorModal: false,
-		};
-		this.handleSubmit = this.handleSubmit.bind(this);
-		this.demoLogin = this.demoLogin.bind(this);
-		this.closeMessage = this.closeMessage.bind(this);
-		this.renderErrors = this.renderErrors.bind(this);
-		this.handleErrorModal = this.handleErrorModal.bind(this);
-	}
+const Login = () => {
+  const history = useHistory();
+  const client = useApolloClient();
 
-	update(field) {
-		return e => this.setState({ [field]: e.target.value });
-	}
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState([]);
 
-	updateCache(client, { data }) {
-		SessionUtil.saveUserToCache(client, data.login);
-		// console.log(data);
-		// client.writeData({
-		// 	data: { isLoggedIn: data.login.loggedIn }
-		// });
-	}
+  const [loginUser] = useMutation(LOGIN_USER, {
+    onCompleted: ({ login }) => {
+      if (!login) return;
+      // persist
+      SessionUtil.saveUserToCache(client, login);
+      SessionUtil.saveUserToLocalStorage(login);
+      // go home
+      history.push("/");
+    },
+    onError: (err) => {
+      const msgs = err?.graphQLErrors?.map((e) => e.message) || [err.message];
+      setErrors(msgs);
+      setTimeout(() => setErrors([]), 5000);
+    },
+  });
 
-	loginAndRedirectTo(url, data) {
-		SessionUtil.saveUserToLocalStorage(data.login);
-		this.props.history.push(url);
-	}
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    loginUser({ variables: { email, password } });
+  };
 
-	handleSubmit(Mutation, variables) {
-		return e => {
-			e.preventDefault();
-			Mutation({ variables });
-			this.handleErrorModal(e);
-		};
-	}
+  const handleDemoLogin = (e) => {
+    e.preventDefault();
+    loginUser({ variables: { email: "demouser@gmail.com", password: "password" } });
+  };
 
-	handleErrorModal(e) {
-		e.preventDefault();
-		this.setState({ showErrorModal: !this.showErrorModal })
-	}
-	// handleSubmit(e, loginUser) {
-	// 	e.preventDefault();
-	// 	loginUser({
-	// 		variables: {
-	// 			email: this.state.email,
-	// 			password: this.state.password
-	// 		}
-	// 	}).catch(err => console.log(err));
-	// }
+  return (
+    <div className="session-page">
+        <form className="login-form-box" onSubmit={handleSubmit}>
+          <p className="session-label">Login</p>
+          <div className="login-form">
+          <h2>?</h2>
+          {errors.length > 0 && (
+            <ul className="errors">
+              {errors.map((err, idx) => (
+                <li key={idx}>{err}</li>
+              ))}
+            </ul>
+          )}
+        <div className="input-boxes">
+            <label style={{width: "100%"}}>EMAIL</label>
+            <input
+              className="text_box"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+            />
+          <label>
+            Password
+            <input
+              className="text_box"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </label>
+          </div>
+          <div style={{display: "flex", justifyContent: "space-between"}}>
 
-	demoLogin(e, loginUser) {
-		e.preventDefault();
-		loginUser({
-			variables: {
-				email: "demouser@gmail.com",
-				password: "password"
-			}
-		})
-	}
+          <button type="submit" className="form-button">Log In</button>
+          <button type="button" onClick={handleDemoLogin} className="demo-button">Demo Login</button>
+          </div>
+      </div>
+        </form>
+      </div>
+  );
+};
 
-	closeMessage(e) {
-		let errorArray = []
-		this.setState({ errors: errorArray });
-	}
-
-	renderErrors(errors) {
-		if (!errors) return null;
-		let errorArray = errors.map((error) => (
-			error.message
-		))
-		this.setState({ errors: errorArray })
-		setTimeout(this.closeMessage, 5001)
-		// console.log(errorArray)
-	}
-
-	render() {
-		const loginErrors = (
-			<div className="login-error">
-				{/* {this.state.errors[0]} */}
-				{this.state.errors}
-			</div>
-		)
-
-		const { email, password } = this.state;
-		
-		return (
-			<Mutation
-				mutation={LOGIN_USER}
-				onCompleted={ data => {
-					const { token } = data.login;
-					localStorage.setItem("auth-token", token);
-					localStorage.setItem("currentUserId", data.login._id)
-					this.props.history.push("/")
-				}}
-				onError={err => this.renderErrors(err.graphQLErrors)}
-				update={(client, data) => this.updateCache(client, data)}
-			>
-				{loginUser => (
-					<div>
-						{/* <div className="login-error">
-							{this.state.errors}
-						</div> */}
-						{this.state.errors.length > 0 ? loginErrors : null}
-						<div className="login-form-box">
-							<label className="session-label">Login</label>
-							<form
-								className="login-form"
-								onSubmit={this.handleSubmit(loginUser, {
-									email,
-									password
-								})}
-							>
-								<div className="form_column">
-									<input
-										className="text_box"
-										value={this.state.email}
-										onChange={this.update("email")}
-										placeholder="Email"
-									/>
-								</div>
-								<div className="form_column">
-									<input
-										className="text_box"
-										value={this.state.password}
-										onChange={this.update("password")}
-										type="password"
-										placeholder="Password"
-									/>
-								</div>
-								<button type="submit" className="form-button">
-									Login
-							</button>
-								<button
-									onClick={e => this.demoLogin(e, loginUser)}
-									className="demo-button"
-								>
-									Demo Login
-							</button>
-							</form>
-						</div>
-					</div>
-				)}
-			</Mutation>
-		);
-	}
-}
-
-export default withRouter(Login);
+export default Login;

@@ -5,8 +5,17 @@ import { Mutation } from '../../util/ApolloCompat';
 import Mutations from "../../graphql/mutations";
 import Queries from "../../graphql/queries";
 import axios from "axios";
+import { gql } from "@apollo/client";
 const { UPDATE_PROFILE_PIC } = Mutations;
 const { CURRENT_USER } = Queries;
+
+const IS_LOGGED_IN = gql`
+  query IsUserLoggedIn {
+    isLoggedIn
+    sessionId
+  }
+`;
+
 class OptionsMenu extends React.Component {
     constructor(props) {
         super(props);
@@ -72,12 +81,14 @@ class OptionsMenu extends React.Component {
             e.preventDefault();
             localStorage.removeItem("auth-token");
             localStorage.removeItem("currentUserId");
-            client.cache.writeData({
-                data: {
-                    isLoggedIn: false,
-                    sessionId: null
-                }
+            client.writeQuery({
+              query: IS_LOGGED_IN,
+            data: {
+                isLoggedIn: false,
+                sessionId: null
+            }
             });
+
             this.props.history.push("/")
         }
     }

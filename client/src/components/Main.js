@@ -2,7 +2,6 @@ import React from "react";
 import { Route, Switch } from "react-router-dom";
 import NavBar from "./navigation/NavBar";
 import TopicsShow from "./topics/TopicsShow"
-// import TopicShow from "./topics/TopicShow"
 import TopicQuestions from "./topics/TopicQuestions"
 import SideBar from "./navigation/SideBar"
 import RightSideBar from "./navigation/RightSideBar";
@@ -20,8 +19,6 @@ const Main = () => {
                 <Switch>
                     <Route exact path="/" component={MainFeedContainer} />
                     <Route exact path="/topics" component={TopicsShow} />
-                    {/* currently commented out since TopicShow only has one feature, TopicQuestion */}
-                    {/* <Route exact path="/topic/:name" component={TopicShow} /> */}
                     <Route exact path="/topic/:name/questions" component={TopicQuestions} />
                     <Route exact path="/search/:query" component={SearchResults} />
                     <Route exact path="/answer" component={QuestionsForYou} />
